@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="autocomplete" default="jar" basedir=".">
+    <property environment="env"/>
+    <!-- cross-platform hack to get the host name -->
+    <property name="env.HOSTNAME" value="${env.COMPUTERNAME}" />
+
+    <!-- ====================================================================== -->
+    <!-- Load properties files                                                  -->
+    <!-- ====================================================================== -->
+    <!-- first load local settings in build.properties (ant properties are immutable so we load this first) -->
+    <property file="build.properties"/>
+    <!-- then load defaults from build.properties.default -->
+    <property file="build.properties.default"/>
+    <property name="build.jarfile.name" value="autocomplete.jar" />
+
+
+    <!-- Common project directories -->
+    <property name="java.tools" value="${java.home}/../lib/tools.jar"/>
+    <property name="base.src.dir" value="${basedir}/src"/>
+    <property name="java.src.dir" value="${base.src.dir}/java"/>
+    <property name="src.resources.dir" value="${base.src.dir}/resources"/>
+    <property name="dist.dir" value="${basedir}/dist"/>
+    <property name="doc.dir" value="${dist.dir}/doc"/>
+    <property name="build.dir" value="${basedir}/build"/>
+    <property name="build.classes" value="${build.dir}/classes"/>
+    <property name="build.test.classes" value="${build.dir}/testclasses" description="Output dir for compiling tests"/>
+    <property name="build.test.input" value="${build.dir}/test/input"/>
+    <property name="build.test.baseline" value="${build.dir}/test/baseline"/>
+    <property name="build.doc.dir" value="${build.dir}/javadoc"/>
+    <property name="lib.dir" value="${basedir}/lib"/>
+
+    <!-- Compile settings -->
+    <property name="build.compiler" value="modern"/>
+    <property name="javac.debug" value="on"/>
+    <property name="javac.deprecation" value="off"/>
+    <property name="javac.optimize" value="off"/>
+    <property name="javac.source" value="1.8"/>
+    <property name="javac.fork" value="true"/>
+    <property name="javac.encoding" value="utf-8"/>
+
+    <!-- Classpaths -->
+    <path id="compile.classpath">
+        <fileset dir="${lib.dir}">
+            <include name="*.jar"/>
+        </fileset>
+        <path location="${basedir}/etc"/>
+        <path location="${src.resources.dir}"/>
+    </path>
+
+
+    <target name="info" description="Outputs diagnostic information">
+        <echo>
+            user.name:          ${user.name}
+            user.home:          ${user.home}
+            ant.version:        ${ant.version}
+            java.home           ${java.home}
+            java.tools          ${java.tools}
+            hostname:           ${env.HOSTNAME}
+
+            basedir             ${basedir}
+        </echo>
+    </target>
+
+    <target name="clean" description="Cleans up files and directories generated during build">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+    </target>
+
+    <target name="prepare" description="Creates directories necessary for build">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${build.classes}"/>
+        <mkdir dir="${build.test.classes}"/>
+        <mkdir dir="${dist.dir}"/>
+        <mkdir dir="${lib.dir}"/>
+    </target>
+
+    <target name="copy-resources" if="src.resources.present">
+        <!-- copy resources to classes directory -->
+        <copy todir="${build.classes}">
+            <fileset dir="${src.resources.dir}"/>
+        </copy>
+    </target>
+
+    <macrodef name="java-compile">
+        <attribute name="srcdir"/>
+        <attribute name="destdir"/>
+        <attribute name="debug" default="${javac.debug}"/>
+        <attribute name="optimize" default="${javac.optimize}"/>
+        <attribute name="classpathref"/>
+        <attribute name="includes" default="**"/>
+
+        <sequential>
+            <javac srcdir="@{srcdir}" destdir="@{destdir}" source="${javac.source}" fork="${javac.fork}"
+                    debug="@{debug}" optimize="@{optimize}" deprecation="${javac.deprecation}" encoding="${javac.encoding}"
+                    includeantruntime="false"
+                    includes="@{includes}">
+                <classpath refid="@{classpathref}"/>
+            </javac>
+        </sequential>
+    </macrodef>
+
+    <target name="compile-nogenerated" depends="prepare, copy-resources"
+            unless="java.generated.exists" description="compile code assuming that there is no generated code to deal with">
+        <java-compile srcdir="${java.src.dir}" destdir="${build.classes}" classpathref="compile.classpath"/>
+    </target>
+
+    <target name="compile" depends="compile-nogenerated" description="Compiles all Java classes"/>
+
+    <target name="jar" depends="compile">
+        <jar jarfile="${build.dir}/${build.jarfile.name}" basedir="${build.classes}"/>
+    </target>
+</project>

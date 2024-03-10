@@ -1,0 +1,25 @@
+data/
+golden/
+out/
+output/
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode
+
+# Eclipse
+*.launch
+*.eml
+.classpath
+.project
+
+# do not ignore anything under .template directory
+!.template/*
+# except for these
+.template/.idea/workspace.xml
+.template/.idea/tasks.xml
+.template/.idea/*.iws

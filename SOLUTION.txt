@@ -1,0 +1,54 @@
+Explain your approach to the problem
+====================================
+Given the scope of this being a PoC (and given the instructions), I just ran with loading the whole set into local memory.
+As I understood it, we are simply using the query logs as an "easy" way to get a list of real locations.
+So I made a class that only stores what we need (unique locations--by name, assuming we are dealing with "city, state" only).
+Out of all the log entries, I only store the unique found, which is a reasonably small subset, and I only used what we need for searching.
+
+While I am pretty ignorant of Java features, I did find some useful facilities while searching for analogs I am familiar with in other languages.
+So if something is not "best practice" for Java specifically, it's probably that ignorance showing.
+
+My first iteration, as instructed, was just matching the top N. That's the search(String searchString, int max). It will be more efficient
+than searching with proximity ordering, not only because we don't have to calculate distance but also because I can simply short-circuit
+when the desired number of matches are found. I built in matching anywhere in the string, up front. Even though that was noted as bonus,
+I didn't see a reason to not do it (from a complexity point of view).
+
+Adding user location--the hardest part was the algorithm. I "borrowed" the algo, and adapted it to my object model. I also lazy load and cache the
+sin/cos values so that 1) we don't do that until needed and 2) we only need to do it 1x per location. This is a minor perf hack but should help some.
+
+I used https://www.latlong.net to get my home lat/long. And in testing, the algo seems pretty right on. (I was surprised there's an entry for Copperhill, TN, which is a tiny town just north of me!).
+
+
+What improvements would you make if you had more time?
+======================================================
+
+Even with location, on my machine, the slowest search (common single char like 'a') was 14ms. Not terrible, but of course, it could add up under scale,
+both with concurrency and increased numbers of unique locations. At GLG, I did some work with a global city database, and there were millions in it.
+
+To be honest, if I were doing this for real, I'd first look for an off-the-shelf solution/service to search place/location. Unless that is prohibited by
+company policy. Even if I couldn't use off-the-shelf for geo search, I would likely explore using elastic search or similar. But only if more realistic
+load testing showed the current solution isn't sufficient. No need to prematurely optimize--especially since alternatives are not free.
+
+If I really had to hand roll a better search, I think I'd look into buiding some kind of character maps. I'm pretty rusty, but I recall learning at least
+one CS algorithm for word searching. So I'd refresh my brain on that and look into it. Could also possibly build a cache of calculated distances, so
+at scale we might reduce number of calculations (e.g., get/use nearest city lat/long for a user, and allow caching by shared city lat/long).
+
+If scale got much bigger, probably would look at a shared in-memory cache of some sort (e.g., redis). Again, only as realistic expected loads showed need.
+
+Either way, we'd need some way, e.g., polling, to keep the current location list/data up to date. So that's another improvement..
+
+Oh, and if we weren't sure the location name itself would be unique, then I'd need to include some actual location info in the key or maybe have the main list store a set of locations per unique location name. But I suspect from a user point of view, we'd want them to be unique anyways. Scotland, AR vs Scotland, UK.
+
+We might also want more structured location searching, so we might have specific search for city, state (admin area, globally), and country.
+
+Explain the space and time complexity of your solution.
+=======================================================
+I'd have to refresh my brain on the proper CS terminology for this stuff. I only ever am asked/need it in interviews. ;)
+
+But generally, we have a small structure (Location) per location. I am not sure how to measure actual memory used (or if it is even possible in Java). But
+we could probably get an approximation if there aren't actual reliable ways to measure. And then multiply that times expected location scale. On the plus
+side, I imagine there is a relatively finite set of locations for which Indeed has listings at any given time, so it's probably not too huge.. I looked at my java proc in Activity Monitor, and it was around 250-260MB. I imagine that's some amount of uncollected garbage from reading thru the file, along with standard runtime working set, but I don't know enough about Java's memory management to speak intelligently on that. I only saw 5,946 unique locations, so I wouldn't think the Location structure is that big, maybe more like 60-120MB. /shrug
+
+As for time, as mentioned, the non-proximity search is more, in a best case, 1-1 with the number of matches desired, and in a worst case runs through the full set. For proximity, as it is now, it's 1x thru the whole set to get all word matches, then 1x through those matches to calculate distance. Then a limit operation to get the top N of those. Definitely more complex/expensive. One way that could be improved (maybe) is a distance cache, so we could have a full ordered set by distance (based on nearest city to user), then we could loop thru that for just the top N matches like we do for word search currently. Not sure it'd be worth the code complexity though.
+
+That's my thoughts after spending a few hours with this stuff. Probably there are much more sophisticated solutions readily available for this problem!
