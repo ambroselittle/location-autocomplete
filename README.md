@@ -8,7 +8,7 @@
 ## OVERVIEW
 
 Ever since Google introduced Google Suggest several years ago, a "suggest" or autocomplete feature has become standard on many search-related websites. As an example, see [indeed's what autocomplete](images/autocomplete.png).  
-Your task is to implement part of the "suggest" component for the "where" field on indeed.com.
+Your task is to implement part of the "suggest" component for the "where" field on example.com.
 
 ## LOCATION AUTOCOMPLETE
 
